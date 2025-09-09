@@ -1,5 +1,5 @@
 /target/
 **/*.rs.bk
 *.pdb
-.whiteout/local.toml
+.whiteout/
 test/
