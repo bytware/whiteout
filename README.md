@@ -27,7 +27,7 @@ Ever accidentally committed an API key? Hardcoded a password for testing? Left d
 const apiKey = "sk-proj-SUPER-SECRET-KEY-123"; // @whiteout: "process.env.API_KEY"
 
 // What gets committed:
-"process.env.API_KEY"
+"process.env.API_KEY" // @whiteout: "process.env.API_KEY"
 ```
 
 ## ✨ Features
@@ -51,7 +51,7 @@ const apiKey = "sk-proj-SUPER-SECRET-KEY-123"; // @whiteout: "process.env.API_KE
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/whiteout.git
+git clone https://github.com/whiteout-dev/whiteout.git
 cd whiteout
 
 # Build and install
@@ -62,11 +62,6 @@ sudo cp target/release/whiteout /usr/local/bin/
 whiteout --version
 ```
 
-### Install with Cargo
-
-```bash
-cargo install whiteout
-```
 
 ## 🚀 Quick Start
 
@@ -166,7 +161,7 @@ cat config.js  # Still shows your secret values
 password = "admin123"  # @whiteout: "getpass.getpass()"
 
 # Committed version:
-"getpass.getpass()"
+"getpass.getpass()"  # @whiteout: "getpass.getpass()"
 ```
 
 ### Block Pattern
@@ -225,24 +220,6 @@ When writing documentation about Whiteout (like this README), use backslash to e
 whiteout init [--path <dir>]
 ```
 
-### Preview Changes
-See what will be committed vs. what stays local:
-```bash
-whiteout preview <file> [--diff]
-```
-
-### Check for Exposed Secrets
-Scan for potential secrets without decorations:
-```bash
-whiteout check [files...] [--fix]
-```
-
-### Show Status
-View all decorated files:
-```bash
-whiteout status [--verbose]
-```
-
 ### Manual Operations
 ```bash
 # Apply clean filter (remove secrets)
@@ -270,7 +247,8 @@ Local values are stored in `.whiteout/local.toml` (gitignored) and restored auto
 
 ## 🔒 Security Considerations
 
-- **Never commit** `.whiteout/` directory
+- **Never commit** `.whiteout/` directory (ensure it's in `.gitignore`)
+- **Local values** are stored in `.whiteout/local.toml`
 - **Backup** your local values separately
 - **Use environment variables** for production secrets
 - **Review commits** before pushing to ensure secrets are removed
@@ -294,25 +272,21 @@ cargo test -- --nocapture
 
 ## 🤝 Contributing
 
-We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+Contributions are welcome!
 
-### Development Setup
+### Development
 
 ```bash
-# Fork and clone the repository
-git clone https://github.com/yourusername/whiteout.git
-cd whiteout
+# Build
+cargo build
 
-# Install development dependencies
-cargo install cargo-watch
-
-# Run tests in watch mode
-cargo watch -x test
+# Test
+cargo test
 
 # Format code
 cargo fmt
 
-# Check for issues
+# Lint
 cargo clippy
 ```
 
@@ -332,8 +306,3 @@ MIT License - see [LICENSE](LICENSE) for details.
 - [Git Filters Explained](https://git-scm.com/book/en/v2/Customizing-Git-Git-Attributes#_keyword_expansion)
 - [Rust Book](https://doc.rust-lang.org/book/)
 
----
-
-<div align="center">
-Made with ❤️ by the Bytware Team
-</div>

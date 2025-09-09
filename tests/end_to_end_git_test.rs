@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use git2::{Repository, Signature, IndexAddOption};
+use git2::Repository;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;

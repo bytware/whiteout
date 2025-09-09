@@ -43,27 +43,17 @@ git2 = "0.18"
 chrono = { version = "0.4", features = ["serde"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-rayon = "1.10"
-aho-corasick = "1.1"
-libc = "0.2.175"
+libc = "0.2"
 
 [dev-dependencies]
 tempfile = "3.10"
 pretty_assertions = "1.4"
 insta = "1.38"
-criterion = { version = "0.5", features = ["html_reports"] }
 
 [[bin]]
 name = "whiteout"
 path = "src/main.rs"
 
-[[bench]]
-name = "parser_benchmark"
-harness = false
-
-[[bench]]
-name = "optimization_comparison"
-harness = false
 
 [lib]
 name = "whiteout"

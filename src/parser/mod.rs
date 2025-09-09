@@ -1,9 +1,5 @@
 pub mod block;
 pub mod inline;
-pub mod inline_optimized;
-pub mod memory_optimized;
-pub mod optimized;
-pub mod parallel;
 pub mod partial;
 pub mod simple;
 
@@ -108,7 +104,9 @@ impl Parser {
                                 skip_until += committed_lines;
                             }
                         } else {
-                            // Clean: Remove entire block including markers, show only committed content
+                            // Clean: Preserve block markers but with empty content, then show committed content
+                            result.push(lines[line_num - 1].to_string()); // Keep @whiteout-start
+                            result.push(lines[*end_line - 1].to_string()); // Keep @whiteout-end
                             if !committed_content.is_empty() {
                                 for content_line in committed_content.lines() {
                                     result.push(content_line.to_string());
@@ -134,10 +132,11 @@ impl Parser {
                     if line_num == *dec_line {
                         if use_local {
                             // Smudge: Show local value with decoration
-                            result.push(format!("{} // @whiteout: \"{}\"", local_value, committed_value));
+                            result.push(format!("{} // @whiteout: {}", local_value, committed_value));
                         } else {
-                            // Clean: Show only committed value without decoration
-                            result.push(committed_value.to_string());
+                            // Clean: Show committed value with decoration for smudge
+                            // This allows smudge to find and restore the local value
+                            result.push(format!("{} // @whiteout: {}", committed_value, committed_value));
                         }
                         found_inline = true;
                         line_processed = true;
@@ -163,8 +162,10 @@ impl Parser {
                                     replacement.local_value, 
                                     replacement.committed_value)
                             } else {
-                                // Clean: Replace entire pattern with just committed value
-                                replacement.committed_value.clone()
+                                // Clean: Keep pattern structure but with committed value for both
+                                format!("[[{}||{}]]", 
+                                    replacement.committed_value,
+                                    replacement.committed_value)
                             };
                             
                             if replacement.start < processed_line.len() {
@@ -187,7 +188,12 @@ impl Parser {
             }
         }
         
-        result.join("\n")
+        let mut output = result.join("\n");
+        // Preserve trailing newline if original had one
+        if content.ends_with('\n') && !output.ends_with('\n') {
+            output.push('\n');
+        }
+        output
     }
 }
 
@@ -248,15 +254,15 @@ const DEBUG = false;
     fn test_apply_decorations_clean() -> Result<()> {
         let parser = Parser::new();
         
-        // Test inline decoration removal
+        // Test inline decoration - keeps decoration but with committed value
         let content = r#"let api_key = "sk-12345"; // @whiteout: "REDACTED""#;
         let decorations = parser.parse(content)?;
         let cleaned = parser.apply_decorations(content, &decorations, false);
-        assert_eq!(cleaned, "\"REDACTED\"");
-        assert!(!cleaned.contains("@whiteout"));
+        assert_eq!(cleaned, r#""REDACTED" // @whiteout: "REDACTED""#);
+        assert!(cleaned.contains("@whiteout"));
         assert!(!cleaned.contains("sk-12345"));
         
-        // Test block decoration removal
+        // Test block decoration - keeps markers but with committed content
         let content = r#"code before
 // @whiteout-start
 const DEBUG = true;
@@ -268,7 +274,8 @@ code after"#;
         assert!(cleaned.contains("code before"));
         assert!(cleaned.contains("const DEBUG = false;"));
         assert!(cleaned.contains("code after"));
-        assert!(!cleaned.contains("@whiteout"));
+        assert!(cleaned.contains("@whiteout-start"));
+        assert!(cleaned.contains("@whiteout-end"));
         assert!(!cleaned.contains("const DEBUG = true;"));
         
         Ok(())
@@ -288,6 +295,34 @@ code after"#;
         let smudged = parser.apply_decorations(content, &decorations, true);
         assert!(smudged.contains("sk-12345"));
         assert!(smudged.contains("@whiteout"));
+        
+        Ok(())
+    }
+    
+    #[test]
+    fn test_incomplete_block() -> Result<()> {
+        let parser = Parser::new();
+        
+        // Test that incomplete blocks are left as-is
+        let content = r#"
+// @whiteout-start
+const SECRET = "value";
+// Missing @whiteout-end
+const OTHER = "data";
+"#;
+        let decorations = parser.parse(content)?;
+        // Should not find any decorations since block is incomplete
+        if !decorations.is_empty() {
+            eprintln!("Found {} decorations:", decorations.len());
+            for (i, dec) in decorations.iter().enumerate() {
+                eprintln!("  {}: {:?}", i, dec);
+            }
+        }
+        assert_eq!(decorations.len(), 0);
+        
+        // When no decorations, apply_decorations should return content unchanged
+        let result = parser.apply_decorations(content, &decorations, false);
+        assert_eq!(result, content);
         
         Ok(())
     }

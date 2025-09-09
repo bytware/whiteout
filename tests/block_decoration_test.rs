@@ -21,9 +21,9 @@ const LOG = "error";"#;
     println!("Original:\n{}", original);
     println!("\nCleaned:\n{}", cleaned);
     
-    // Check decorations are REMOVED (this is the fix we made)
-    assert!(!cleaned.contains("@whiteout-start"), "Decoration @whiteout-start not removed");
-    assert!(!cleaned.contains("@whiteout-end"), "Decoration @whiteout-end not removed");
+    // Check decorations are PRESERVED (for smudge to work)
+    assert!(cleaned.contains("@whiteout-start"), "Decoration @whiteout-start should be preserved");
+    assert!(cleaned.contains("@whiteout-end"), "Decoration @whiteout-end should be preserved");
     
     // Check only safe values are present
     assert!(cleaned.contains("const DEBUG = false"), "Missing safe DEBUG value");

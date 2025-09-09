@@ -1,5 +1,4 @@
 pub mod clean;
-pub mod optimized_clean;
 pub mod smudge;
 
 use anyhow::Result;

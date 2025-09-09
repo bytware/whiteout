@@ -58,8 +58,10 @@ impl SimpleParser {
                         committed_content: String::new(), // Nothing in committed version
                     });
                 }
+                // Don't increment i here since we already did in the loop
+            } else {
+                i += 1;
             }
-            i += 1;
         }
         
         Ok(decorations)

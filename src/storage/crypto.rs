@@ -13,7 +13,8 @@ use std::path::PathBuf;
 
 pub struct Crypto {
     cipher: Aes256Gcm,
-    salt: Option<String>,
+    #[allow(dead_code)]
+    salt: Option<String>,  // Stored for potential future use
 }
 
 impl Crypto {

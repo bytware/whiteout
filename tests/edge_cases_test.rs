@@ -185,12 +185,14 @@ fn test_real_world_config_file() {
     assert!(!cleaned.contains("sk-proj-abc123def456"));
     assert!(!cleaned.contains("dev.internal:8080"));
     
-    // Verify safe values are present
+    // Verify safe values are present (with decorations preserved for smudge)
     assert!(cleaned.contains("REDACTED"));
     assert!(cleaned.contains("process.env.API_KEY"));
     assert!(cleaned.contains("api.production.com"));
     assert!(cleaned.contains("false"));
     assert!(cleaned.contains("\"error\""));
+    // Decorations are preserved for smudge to work
+    assert!(cleaned.contains("@whiteout"));
     
     // Verify restoration
     let smudged = whiteout.smudge(&cleaned, file_path).unwrap();

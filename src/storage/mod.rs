@@ -1,10 +1,8 @@
 pub mod atomic;
-pub mod batched;
 pub mod crypto;
 pub mod local;
 
 pub use local::LocalStorage;
-pub use batched::BatchedStorage;
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

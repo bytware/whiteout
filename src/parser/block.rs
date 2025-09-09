@@ -6,11 +6,13 @@ use super::Decoration;
 
 // Static regex compilation for performance
 static START_PATTERN: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"(?m)^.*@whiteout-start\s*$").expect("Failed to compile start pattern")
+    // Match comment lines with just @whiteout-start (and optional whitespace)
+    Regex::new(r"(?m)^\s*(?://|#|--|/\*|\*)\s*@whiteout-start\s*(?:\*/)?$").expect("Failed to compile start pattern")
 });
 
 static END_PATTERN: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"(?m)^.*@whiteout-end\s*$").expect("Failed to compile end pattern")
+    // Match comment lines with just @whiteout-end (and optional whitespace)
+    Regex::new(r"(?m)^\s*(?://|#|--|/\*|\*)\s*@whiteout-end\s*(?:\*/)?$").expect("Failed to compile end pattern")
 });
 
 pub struct BlockParser;
@@ -48,6 +50,7 @@ impl BlockParser {
                     i += 1;
                 }
                 
+                // Only create decoration if we found the end marker
                 if i < lines.len() && END_PATTERN.is_match(lines[i]) {
                     let _end_marker_line = i + 1;
                     i += 1;
@@ -108,7 +111,7 @@ const LOG_LEVEL = "error";
         assert_eq!(decorations.len(), 1);
         
         match &decorations[0] {
-            Decoration::Block { start_line, end_line, local_content, committed_content } => {
+            Decoration::Block { start_line, end_line: _, local_content, committed_content } => {
                 assert_eq!(*start_line, 2);
                 assert!(local_content.contains("true"));
                 assert!(committed_content.contains("false"));
@@ -117,6 +120,21 @@ const LOG_LEVEL = "error";
         }
     }
 
+    #[test]
+    fn test_incomplete_block_not_matched() {
+        let parser = BlockParser::new();
+        let content = r#"
+// @whiteout-start
+const SECRET = "value";
+// Missing @whiteout-end
+const OTHER = "data";
+"#;
+        
+        let decorations = parser.parse(content).unwrap();
+        // Should not find any decorations since block is incomplete
+        assert_eq!(decorations.len(), 0, "Should not match incomplete blocks");
+    }
+    
     #[test]
     fn test_multiple_blocks() {
         let parser = BlockParser::new();
