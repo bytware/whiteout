@@ -93,8 +93,8 @@ impl Parser {
                     Decoration::Inline { line: dec_line, local_value, committed_value } => {
                         if line_num == *dec_line {
                             if use_local {
-                                // Keep original line with local value
-                                result.push(line.to_string());
+                                // Use the local value (which may have been updated from storage)
+                                result.push(format!("{} // @whiteout: {}", local_value, committed_value));
                             } else {
                                 // Replace local value with committed value, keep decoration
                                 let original_line = line;

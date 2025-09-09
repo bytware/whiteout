@@ -74,7 +74,8 @@ mod tests {
         
         let smudged = apply(content, file_path, &storage, &config)?;
         assert!(smudged.contains("sk-12345"));
-        assert!(!smudged.contains("ENV_VAR"));
+        // The decoration should be preserved
+        assert!(smudged.contains("@whiteout:"));
         
         Ok(())
     }
