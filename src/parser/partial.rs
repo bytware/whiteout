@@ -1,19 +1,32 @@
 use anyhow::Result;
+use once_cell::sync::Lazy;
 use regex::Regex;
 
 use super::{Decoration, PartialReplacement};
 
-pub struct PartialParser {
-    pattern: Regex,
-    decorator_pattern: Regex,
+// Static regex compilation for performance
+static PATTERN: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"\[\[([^|]+)\|\|([^\]]+)\]\]").expect("Failed to compile pattern")
+});
+
+static DECORATOR_PATTERN: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"//\s*@whiteout-partial").expect("Failed to compile decorator pattern")
+});
+
+pub struct PartialParser;
+
+impl Default for PartialParser {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl PartialParser {
     pub fn new() -> Self {
-        let pattern = Regex::new(r"\[\[([^|]+)\|\|([^\]]+)\]\]").unwrap();
-        let decorator_pattern = Regex::new(r"//\s*@whiteout-partial").unwrap();
-        
-        Self { pattern, decorator_pattern }
+        // Force lazy static initialization
+        let _ = &*PATTERN;
+        let _ = &*DECORATOR_PATTERN;
+        Self
     }
 
     pub fn parse(&self, content: &str) -> Result<Vec<Decoration>> {
@@ -21,13 +34,13 @@ impl PartialParser {
         
         for (line_num, line) in content.lines().enumerate() {
             // Only process lines that have the @whiteout-partial decorator
-            if !self.decorator_pattern.is_match(line) {
+            if !DECORATOR_PATTERN.is_match(line) {
                 continue;
             }
             
             let mut replacements = Vec::new();
             
-            for capture in self.pattern.captures_iter(line) {
+            for capture in PATTERN.captures_iter(line) {
                 let match_pos = capture.get(0).unwrap();
                 let local_value = capture.get(1).unwrap().as_str().to_string();
                 let committed_value = capture.get(2).unwrap().as_str().to_string();

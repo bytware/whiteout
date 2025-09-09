@@ -3,8 +3,11 @@ use aes_gcm::{
     Aes256Gcm, Key, Nonce,
 };
 use anyhow::Result;
+use argon2::{
+    password_hash::{PasswordHasher, Salt},
+    Argon2,
+};
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
-use sha2::{Digest, Sha256};
 
 pub struct Crypto {
     cipher: Aes256Gcm,
@@ -57,11 +60,21 @@ impl Crypto {
     }
 
     fn derive_key(passphrase: &str) -> Key<Aes256Gcm> {
-        let mut hasher = Sha256::new();
-        hasher.update(passphrase.as_bytes());
-        hasher.update(b"whiteout-salt-v1");
-        let result = hasher.finalize();
-        *Key::<Aes256Gcm>::from_slice(&result)
+        // Use a fixed salt for deterministic key derivation
+        // In production, consider storing a random salt per installation
+        const SALT_STR: &str = "whiteout$alt$v1$deterministic";
+        
+        let argon2 = Argon2::default();
+        let salt = Salt::from_b64(SALT_STR).unwrap_or_else(|_| {
+            Salt::from_b64("d2hpdGVvdXQkYWx0JHYxJGRldGVybWlu").unwrap()
+        });
+        
+        let mut output = [0u8; 32];
+        argon2
+            .hash_password_into(passphrase.as_bytes(), salt.as_bytes(), &mut output)
+            .expect("Failed to derive key");
+        
+        *Key::<Aes256Gcm>::from_slice(&output)
     }
 }
 

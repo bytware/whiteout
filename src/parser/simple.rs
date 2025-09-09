@@ -1,20 +1,28 @@
 use anyhow::Result;
+use once_cell::sync::Lazy;
 use regex::Regex;
 
 use super::Decoration;
 
+// Static regex compilation for performance
+static PATTERN: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"(?m)^.*@whiteout.*$").expect("Failed to compile pattern")
+});
+
 /// Parser for simple @whiteout lines that hide entire lines or blocks
-pub struct SimpleParser {
-    pattern: Regex,
+pub struct SimpleParser;
+
+impl Default for SimpleParser {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl SimpleParser {
     pub fn new() -> Self {
-        // Match lines containing just @whiteout (with any prefix)
-        // We'll filter out @whiteout-start, @whiteout-end, and @whiteout: in the parse method
-        let pattern = Regex::new(r"(?m)^.*@whiteout.*$").unwrap();
-        
-        Self { pattern }
+        // Force lazy static initialization
+        let _ = &*PATTERN;
+        Self
     }
 
     pub fn parse(&self, content: &str) -> Result<Vec<Decoration>> {
@@ -25,7 +33,7 @@ impl SimpleParser {
         while i < lines.len() {
             // Check if line matches pattern and is not escaped
             // Also skip @whiteout-start, @whiteout-end, and @whiteout: patterns
-            if self.pattern.is_match(lines[i]) 
+            if PATTERN.is_match(lines[i]) 
                 && !lines[i].contains(r"\@whiteout")
                 && !lines[i].contains("@whiteout-start")
                 && !lines[i].contains("@whiteout-end")

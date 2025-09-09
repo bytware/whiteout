@@ -1,8 +1,34 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use colored::Colorize;
 use std::path::PathBuf;
 use whiteout::Whiteout;
+
+/// Display an error message with proper formatting
+fn display_error(err: &anyhow::Error) {
+    eprintln!("\n{} {}", "✗".bright_red().bold(), "Operation failed".bright_red().bold());
+    eprintln!("  {} {}", "├".bright_black(), err);
+    
+    // Display error chain
+    for cause in err.chain().skip(1) {
+        eprintln!("  {} {}", "├".bright_black(), cause);
+    }
+    
+    // Add helpful context based on error type
+    let error_str = err.to_string();
+    if error_str.contains("Permission denied") {
+        eprintln!("  {} Try running with elevated permissions", "└".bright_cyan());
+    } else if error_str.contains("No such file") {
+        eprintln!("  {} Check that the file path is correct", "└".bright_cyan());
+    } else if error_str.contains("git") {
+        eprintln!("  {} Ensure you're in a Git repository", "└".bright_cyan());
+    } else {
+        eprintln!("  {} Run with {} for more details", 
+            "└".bright_black(), 
+            "--verbose".bright_cyan()
+        );
+    }
+}
 
 #[derive(Parser)]
 #[command(name = "whiteout")]
@@ -101,7 +127,8 @@ enum ConfigAction {
     List,
 }
 
-fn main() -> Result<()> {
+fn main() {
+    // Setup tracing
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::from_default_env()
@@ -111,10 +138,19 @@ fn main() -> Result<()> {
 
     let cli = Cli::parse();
     
+    // Run the command and handle errors gracefully
+    if let Err(err) = run_command(cli) {
+        display_error(&err);
+        std::process::exit(1);
+    }
+}
+
+fn run_command(cli: Cli) -> Result<()> {
     match cli.command {
         Commands::Init { path } => {
             println!("{}", "Initializing whiteout...".bright_blue());
-            Whiteout::init(&path)?;
+            Whiteout::init(&path)
+                .context("Failed to initialize Whiteout in the specified directory")?;
             
             // Automatically configure Git filters
             use std::process::Command;
@@ -124,7 +160,8 @@ fn main() -> Result<()> {
             // Add to .gitattributes
             let gitattributes_path = path.join(".gitattributes");
             let mut gitattributes_content = if gitattributes_path.exists() {
-                std::fs::read_to_string(&gitattributes_path)?
+                std::fs::read_to_string(&gitattributes_path)
+                    .context("Failed to read .gitattributes file")?
             } else {
                 String::new()
             };
@@ -134,7 +171,8 @@ fn main() -> Result<()> {
                     gitattributes_content.push('\n');
                 }
                 gitattributes_content.push_str("* filter=whiteout\n");
-                std::fs::write(&gitattributes_path, gitattributes_content)?;
+                std::fs::write(&gitattributes_path, gitattributes_content)
+                    .context("Failed to write .gitattributes file")?
                 println!("  {} Added filter to .gitattributes", "✓".bright_green());
             }
             
@@ -163,9 +201,11 @@ fn main() -> Result<()> {
         }
         
         Commands::Clean { file } => {
-            let whiteout = Whiteout::new(".")?;
+            let whiteout = Whiteout::new(".")
+                .context("Failed to load Whiteout configuration")?;
             let (content, file_path) = if let Some(file_path) = file {
-                let content = std::fs::read_to_string(&file_path)?;
+                let content = std::fs::read_to_string(&file_path)
+                    .with_context(|| format!("Failed to read file: {}", file_path.display()))?;
                 (content, file_path)
             } else {
                 use std::io::Read;
@@ -174,14 +214,17 @@ fn main() -> Result<()> {
                 (buffer, PathBuf::from("stdin"))
             };
             
-            let cleaned = whiteout.clean(&content, &file_path)?;
+            let cleaned = whiteout.clean(&content, &file_path)
+                .context("Failed to apply clean filter")?;
             print!("{}", cleaned);
         }
         
         Commands::Smudge { file } => {
-            let whiteout = Whiteout::new(".")?;
+            let whiteout = Whiteout::new(".")
+                .context("Failed to load Whiteout configuration")?;
             let (content, file_path) = if let Some(file_path) = file {
-                let content = std::fs::read_to_string(&file_path)?;
+                let content = std::fs::read_to_string(&file_path)
+                    .with_context(|| format!("Failed to read file: {}", file_path.display()))?;
                 (content, file_path)
             } else {
                 use std::io::Read;
@@ -190,13 +233,16 @@ fn main() -> Result<()> {
                 (buffer, PathBuf::from("stdin"))
             };
             
-            let smudged = whiteout.smudge(&content, &file_path)?;
+            let smudged = whiteout.smudge(&content, &file_path)
+                .context("Failed to apply smudge filter")?;
             print!("{}", smudged);
         }
         
         Commands::Preview { file, diff } => {
-            let whiteout = Whiteout::new(".")?;
-            let content = std::fs::read_to_string(&file)?;
+            let whiteout = Whiteout::new(".")
+                .context("Failed to load Whiteout configuration")?;
+            let content = std::fs::read_to_string(&file)
+                .with_context(|| format!("Failed to read file: {}", file.display()))?;
             
             println!("{}", "Whiteout Preview".bright_blue().bold());
             println!("{}", "================".bright_blue());

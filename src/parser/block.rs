@@ -1,23 +1,32 @@
 use anyhow::Result;
+use once_cell::sync::Lazy;
 use regex::Regex;
 
 use super::Decoration;
 
-pub struct BlockParser {
-    start_pattern: Regex,
-    end_pattern: Regex,
+// Static regex compilation for performance
+static START_PATTERN: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"(?m)^.*@whiteout-start\s*$").expect("Failed to compile start pattern")
+});
+
+static END_PATTERN: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"(?m)^.*@whiteout-end\s*$").expect("Failed to compile end pattern")
+});
+
+pub struct BlockParser;
+
+impl Default for BlockParser {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl BlockParser {
     pub fn new() -> Self {
-        // Match @whiteout-start/end with any comment style or no comment at all
-        let start_pattern = Regex::new(r"(?m)^.*@whiteout-start\s*$").unwrap();
-        let end_pattern = Regex::new(r"(?m)^.*@whiteout-end\s*$").unwrap();
-        
-        Self {
-            start_pattern,
-            end_pattern,
-        }
+        // Force lazy static initialization
+        let _ = &*START_PATTERN;
+        let _ = &*END_PATTERN;
+        Self
     }
 
     pub fn parse(&self, content: &str) -> Result<Vec<Decoration>> {
@@ -27,28 +36,28 @@ impl BlockParser {
         
         while i < lines.len() {
             // Check if line matches pattern and is not escaped
-            if self.start_pattern.is_match(lines[i]) && !lines[i].contains(r"\@whiteout-start") {
+            if START_PATTERN.is_match(lines[i]) && !lines[i].contains(r"\@whiteout-start") {
                 let start_line = i + 1;
                 let mut local_lines = Vec::new();
                 let mut committed_lines = Vec::new();
                 
                 i += 1;
                 
-                while i < lines.len() && !self.end_pattern.is_match(lines[i]) {
+                while i < lines.len() && !END_PATTERN.is_match(lines[i]) {
                     local_lines.push(lines[i]);
                     i += 1;
                 }
                 
-                if i < lines.len() && self.end_pattern.is_match(lines[i]) {
+                if i < lines.len() && END_PATTERN.is_match(lines[i]) {
                     let _end_marker_line = i + 1;
                     i += 1;
                     
                     while i < lines.len() {
-                        if i + 1 < lines.len() && self.start_pattern.is_match(lines[i + 1]) {
+                        if i + 1 < lines.len() && START_PATTERN.is_match(lines[i + 1]) {
                             break;
                         }
                         
-                        if self.start_pattern.is_match(lines[i]) || self.end_pattern.is_match(lines[i]) {
+                        if START_PATTERN.is_match(lines[i]) || END_PATTERN.is_match(lines[i]) {
                             break;
                         }
                         
@@ -57,7 +66,7 @@ impl BlockParser {
                         
                         if !committed_lines.is_empty() && 
                            (i >= lines.len() || lines[i].trim().is_empty() || 
-                            self.start_pattern.is_match(lines[i])) {
+                            START_PATTERN.is_match(lines[i])) {
                             break;
                         }
                     }
