@@ -337,19 +337,200 @@ fn run_command(cli: Cli) -> Result<()> {
         }
         
         Commands::Mark { file, line, replace } => {
-            println!("{}", format!("Marking {:?} as local-only", file).bright_yellow());
-            if let Some(l) = line {
-                println!("  Line: {}", l);
+            if !file.exists() {
+                anyhow::bail!("File not found: {}", file.display());
             }
-            if let Some(r) = replace {
-                println!("  Replacement: {}", r);
+            
+            let content = std::fs::read_to_string(&file)
+                .with_context(|| format!("Failed to read file: {}", file.display()))?;
+            
+            let replacement = replace.unwrap_or_else(|| "REDACTED".to_string());
+            
+            if let Some(line_spec) = line {
+                // Parse line number or range
+                let lines: Vec<&str> = content.lines().collect();
+                
+                if line_spec.contains('-') {
+                    // Range: e.g., "10-15"
+                    let parts: Vec<&str> = line_spec.split('-').collect();
+                    if parts.len() != 2 {
+                        anyhow::bail!("Invalid line range format. Use: start-end");
+                    }
+                    
+                    let start: usize = parts[0].parse()
+                        .context("Invalid start line number")?;
+                    let end: usize = parts[1].parse()
+                        .context("Invalid end line number")?;
+                    
+                    if start < 1 || end > lines.len() || start > end {
+                        anyhow::bail!("Invalid line range: {} (file has {} lines)", line_spec, lines.len());
+                    }
+                    
+                    println!("{} Marking lines {}-{} as local-only in {}", 
+                        "→".bright_green(), start, end, file.display());
+                    
+                    // Add block decoration
+                    let mut new_lines = Vec::new();
+                    for (i, line) in lines.iter().enumerate() {
+                        if i == start - 1 {
+                            new_lines.push(format!("// @whiteout-start"));
+                        }
+                        new_lines.push(line.to_string());
+                        if i == end - 1 {
+                            new_lines.push(format!("// @whiteout-end"));
+                            // Add replacement as comment
+                            for repl_line in replacement.lines() {
+                                new_lines.push(format!("// {}", repl_line));
+                            }
+                        }
+                    }
+                    
+                    std::fs::write(&file, new_lines.join("\n"))
+                        .with_context(|| format!("Failed to write file: {}", file.display()))?;
+                    
+                } else {
+                    // Single line
+                    let line_num: usize = line_spec.parse()
+                        .context("Invalid line number")?;
+                    
+                    if line_num < 1 || line_num > lines.len() {
+                        anyhow::bail!("Line {} out of range (file has {} lines)", 
+                            line_num, lines.len());
+                    }
+                    
+                    println!("{} Marking line {} as local-only in {}", 
+                        "→".bright_green(), line_num, file.display());
+                    
+                    // Add inline decoration
+                    let mut new_lines = Vec::new();
+                    for (i, line) in lines.iter().enumerate() {
+                        if i == line_num - 1 {
+                            // Add decoration to the line
+                            new_lines.push(format!("{} // @whiteout: \"{}\"", 
+                                line.trim_end(), replacement));
+                        } else {
+                            new_lines.push(line.to_string());
+                        }
+                    }
+                    
+                    std::fs::write(&file, new_lines.join("\n"))
+                        .with_context(|| format!("Failed to write file: {}", file.display()))?;
+                }
+                
+                println!("{} Successfully marked as local-only", "✓".bright_green());
+                
+            } else {
+                // Interactive mode hint
+                println!("{}", "Interactive marking:".bright_blue().bold());
+                println!("File: {}\n", file.display());
+                
+                let lines: Vec<&str> = content.lines().collect();
+                let max_display = 20.min(lines.len());
+                
+                for (i, line) in lines.iter().take(max_display).enumerate() {
+                    println!("{:4} | {}", i + 1, line);
+                }
+                
+                if lines.len() > max_display {
+                    println!("... ({} more lines)", lines.len() - max_display);
+                }
+                
+                println!("\n{} Use {} to mark specific lines", 
+                    "Hint:".bright_cyan(),
+                    format!("--line NUMBER or --line START-END").bright_white());
+                println!("Example: {} mark {} --line 5 --replace \"REDACTED\"",
+                    "whiteout".bright_white(),
+                    file.display());
             }
         }
         
         Commands::Unmark { file, line } => {
-            println!("{}", format!("Unmarking {:?}", file).bright_yellow());
-            if let Some(l) = line {
-                println!("  Line: {}", l);
+            if !file.exists() {
+                anyhow::bail!("File not found: {}", file.display());
+            }
+            
+            let content = std::fs::read_to_string(&file)
+                .with_context(|| format!("Failed to read file: {}", file.display()))?;
+            
+            let lines: Vec<&str> = content.lines().collect();
+            let mut new_lines = Vec::new();
+            let mut removed_count = 0;
+            let mut skip_until_end = false;
+            
+            if let Some(line_spec) = line {
+                // Remove specific decoration
+                let target_line: usize = line_spec.parse()
+                    .context("Invalid line number")?;
+                
+                if target_line < 1 || target_line > lines.len() {
+                    anyhow::bail!("Line {} out of range (file has {} lines)", 
+                        target_line, lines.len());
+                }
+                
+                for (i, line) in lines.iter().enumerate() {
+                    let line_num = i + 1;
+                    
+                    if line_num == target_line && line.contains("// @whiteout:") {
+                        // Remove inline decoration
+                        if let Some(pos) = line.find("// @whiteout:") {
+                            new_lines.push(line[..pos].trim_end().to_string());
+                            removed_count += 1;
+                        } else {
+                            new_lines.push(line.to_string());
+                        }
+                    } else {
+                        new_lines.push(line.to_string());
+                    }
+                }
+                
+            } else {
+                // Remove all decorations
+                for line in lines {
+                    if line.contains("@whiteout-start") {
+                        skip_until_end = true;
+                        removed_count += 1;
+                        continue;
+                    } else if line.contains("@whiteout-end") {
+                        skip_until_end = false;
+                        removed_count += 1;
+                        // Skip the following comment lines that are replacements
+                        continue;
+                    } else if skip_until_end {
+                        // Skip lines inside block
+                        continue;
+                    } else if line.contains("// @whiteout:") {
+                        // Remove inline decoration
+                        if let Some(pos) = line.find("// @whiteout:") {
+                            let cleaned = line[..pos].trim_end();
+                            if !cleaned.is_empty() {
+                                new_lines.push(cleaned.to_string());
+                            }
+                            removed_count += 1;
+                        } else {
+                            new_lines.push(line.to_string());
+                        }
+                    } else if line.trim().starts_with("// @whiteout") {
+                        // Skip standalone decoration lines
+                        removed_count += 1;
+                        continue;
+                    } else {
+                        new_lines.push(line.to_string());
+                    }
+                }
+            }
+            
+            if removed_count > 0 {
+                std::fs::write(&file, new_lines.join("\n"))
+                    .with_context(|| format!("Failed to write file: {}", file.display()))?;
+                
+                println!("{} Removed {} decoration(s) from {}", 
+                    "✓".bright_green(), 
+                    removed_count, 
+                    file.display());
+            } else {
+                println!("{} No decorations found to remove in {}", 
+                    "⚠".bright_yellow(),
+                    file.display());
             }
         }
         

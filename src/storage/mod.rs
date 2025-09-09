@@ -1,6 +1,7 @@
+pub mod atomic;
+pub mod batched;
 pub mod crypto;
 pub mod local;
-pub mod batched;
 
 pub use local::LocalStorage;
 pub use batched::BatchedStorage;

@@ -1,7 +1,9 @@
 pub mod config;
+pub mod error;
 pub mod parser;
 pub mod storage;
 pub mod transform;
+pub mod validation;
 
 use anyhow::Result;
 use std::path::Path;
