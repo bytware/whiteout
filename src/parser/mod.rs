@@ -93,9 +93,23 @@ impl Parser {
                     Decoration::Inline { line: dec_line, local_value, committed_value } => {
                         if line_num == *dec_line {
                             if use_local {
-                                result.push(local_value.clone());
+                                // Keep original line with local value
+                                result.push(line.to_string());
                             } else {
-                                result.push(committed_value.clone());
+                                // Replace local value with committed value, keep decoration
+                                let original_line = line;
+                                // The line format is: "local_value // @whiteout: committed_value"
+                                // We want: "committed_value // @whiteout: committed_value"
+                                if let Some(comment_idx) = original_line.find("// @whiteout:") {
+                                    result.push(format!("{} {}", 
+                                        committed_value.trim(), 
+                                        &original_line[comment_idx..]));
+                                } else {
+                                    // Fallback
+                                    result.push(format!("{} // @whiteout: {}", 
+                                        committed_value.trim(), 
+                                        committed_value.trim()));
+                                }
                             }
                             line_processed = true;
                             break;

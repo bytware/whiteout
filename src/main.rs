@@ -21,6 +21,22 @@ enum Commands {
         path: PathBuf,
     },
     
+    #[command(about = "Preview what will be committed vs what stays local")]
+    Preview {
+        #[arg(help = "File path to preview")]
+        file: PathBuf,
+        #[arg(short, long, help = "Show side-by-side diff")]
+        diff: bool,
+    },
+    
+    #[command(about = "Check files for potential secrets that aren't decorated")]
+    Check {
+        #[arg(help = "Files to check (defaults to all tracked files)")]
+        files: Vec<PathBuf>,
+        #[arg(short, long, help = "Fix issues automatically")]
+        fix: bool,
+    },
+    
     #[command(about = "Mark a line or block as local-only")]
     Mark {
         #[arg(help = "File path")]
@@ -99,14 +115,51 @@ fn main() -> Result<()> {
         Commands::Init { path } => {
             println!("{}", "Initializing whiteout...".bright_blue());
             Whiteout::init(&path)?;
-            println!("{}", "✓ Whiteout initialized successfully!".bright_green());
-            println!("\nNext steps:");
-            println!("  1. Add Git filter configuration to your .gitattributes:");
-            println!("     {}", "* filter=whiteout".bright_yellow());
-            println!("  2. Configure Git filters:");
-            println!("     {}", "git config filter.whiteout.clean 'whiteout clean'".bright_yellow());
-            println!("     {}", "git config filter.whiteout.smudge 'whiteout smudge'".bright_yellow());
-            println!("     {}", "git config filter.whiteout.required true".bright_yellow());
+            
+            // Automatically configure Git filters
+            use std::process::Command;
+            
+            println!("{}", "Configuring Git filters...".bright_blue());
+            
+            // Add to .gitattributes
+            let gitattributes_path = path.join(".gitattributes");
+            let mut gitattributes_content = if gitattributes_path.exists() {
+                std::fs::read_to_string(&gitattributes_path)?
+            } else {
+                String::new()
+            };
+            
+            if !gitattributes_content.contains("filter=whiteout") {
+                if !gitattributes_content.is_empty() && !gitattributes_content.ends_with('\n') {
+                    gitattributes_content.push('\n');
+                }
+                gitattributes_content.push_str("* filter=whiteout\n");
+                std::fs::write(&gitattributes_path, gitattributes_content)?;
+                println!("  {} Added filter to .gitattributes", "✓".bright_green());
+            }
+            
+            // Configure Git
+            Command::new("git")
+                .args(&["config", "filter.whiteout.clean", "whiteout clean"])
+                .current_dir(&path)
+                .output()?;
+            
+            Command::new("git")
+                .args(&["config", "filter.whiteout.smudge", "whiteout smudge"])
+                .current_dir(&path)
+                .output()?;
+            
+            Command::new("git")
+                .args(&["config", "filter.whiteout.required", "true"])
+                .current_dir(&path)
+                .output()?;
+            
+            println!("  {} Configured Git filters", "✓".bright_green());
+            println!("\n{}", "✓ Whiteout initialized and configured successfully!".bright_green().bold());
+            println!("\n{}", "Quick start:".bright_blue().bold());
+            println!("  1. Add decorations to your code:");
+            println!("     {}", "let key = \"secret\"; // @whiteout: \"REDACTED\"".bright_yellow());
+            println!("  2. Commit normally - secrets stay local!");
         }
         
         Commands::Clean { file } => {
@@ -139,6 +192,90 @@ fn main() -> Result<()> {
             
             let smudged = whiteout.smudge(&content, &file_path)?;
             print!("{}", smudged);
+        }
+        
+        Commands::Preview { file, diff } => {
+            let whiteout = Whiteout::new(".")?;
+            let content = std::fs::read_to_string(&file)?;
+            
+            println!("{}", "Whiteout Preview".bright_blue().bold());
+            println!("{}", "================".bright_blue());
+            println!("File: {}\n", file.display());
+            
+            let cleaned = whiteout.clean(&content, &file)?;
+            
+            if diff {
+                println!("{}", "LOCAL VERSION (Your Working Directory):".bright_green().bold());
+                println!("{}", "----------------------------------------".bright_green());
+                println!("{}", content);
+                println!();
+                println!("{}", "COMMITTED VERSION (What Git Will Store):".bright_yellow().bold());
+                println!("{}", "-----------------------------------------".bright_yellow());
+                println!("{}", cleaned);
+            } else {
+                println!("{}", "What will be committed:".bright_yellow().bold());
+                println!("{}", cleaned);
+                println!();
+                println!("Use {} to see side-by-side comparison", "--diff".bright_cyan());
+            }
+        }
+        
+        Commands::Check { files, fix } => {
+            println!("{}", "Checking for potential secrets...".bright_blue());
+            
+            // Simple pattern matching for potential secrets
+            let patterns = vec![
+                (r"(?i)(api[_-]?key|apikey)", "API Key"),
+                (r"(?i)(secret|password|passwd|pwd)", "Secret/Password"),
+                (r"(?i)(token|bearer)", "Token"),
+                (r"(?i)sk-[a-zA-Z0-9]{32,}", "OpenAI API Key"),
+                (r"(?i)ghp_[a-zA-Z0-9]{36}", "GitHub Token"),
+                (r"https?://[^/]*:[^@]*@", "URL with credentials"),
+            ];
+            
+            let files_to_check = if files.is_empty() {
+                // Get all tracked files
+                use std::process::Command;
+                let output = Command::new("git")
+                    .args(&["ls-files"])
+                    .output()?;
+                String::from_utf8_lossy(&output.stdout)
+                    .lines()
+                    .map(PathBuf::from)
+                    .collect()
+            } else {
+                files
+            };
+            
+            let mut found_issues = false;
+            for file_path in files_to_check {
+                if let Ok(content) = std::fs::read_to_string(&file_path) {
+                    for (pattern_str, name) in &patterns {
+                        let re = regex::Regex::new(pattern_str)?;
+                        for (line_num, line) in content.lines().enumerate() {
+                            if re.is_match(line) && !line.contains("@whiteout") {
+                                println!("  {} {}:{} - Potential {} found", 
+                                    "⚠".bright_yellow(), 
+                                    file_path.display(), 
+                                    line_num + 1,
+                                    name);
+                                found_issues = true;
+                                
+                                if fix {
+                                    println!("    {} Add decoration: // @whiteout: \"REDACTED\"", 
+                                        "→".bright_cyan());
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            if !found_issues {
+                println!("{}", "✓ No potential secrets found!".bright_green());
+            } else if !fix {
+                println!("\nUse {} to automatically add decorations", "--fix".bright_cyan());
+            }
         }
         
         Commands::Status { verbose } => {

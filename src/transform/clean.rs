@@ -52,9 +52,10 @@ pub fn apply(
         }
     }
     
-    // Return content with committed values (decorations show committed version)
+    // Apply transformations to remove local values and keep only committed values
     // This is what gets stored in Git
-    Ok(content.to_string())
+    let cleaned = parser.apply_decorations(content, &decorations, false);
+    Ok(cleaned)
 }
 
 #[cfg(test)]
