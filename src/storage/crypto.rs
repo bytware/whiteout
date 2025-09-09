@@ -4,20 +4,72 @@ use aes_gcm::{
 };
 use anyhow::Result;
 use argon2::{
-    password_hash::{PasswordHasher, Salt},
+    password_hash::{PasswordHasher, SaltString},
     Argon2,
 };
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
+use rand::RngCore;
+use std::fs;
+use std::path::PathBuf;
 
 pub struct Crypto {
     cipher: Aes256Gcm,
+    salt: Option<String>,
 }
 
 impl Crypto {
     pub fn new(passphrase: &str) -> Result<Self> {
-        let key = Self::derive_key(passphrase);
+        let salt = Self::get_or_create_salt()?;
+        let key = Self::derive_key(passphrase, &salt)?;
         let cipher = Aes256Gcm::new(&key);
-        Ok(Self { cipher })
+        Ok(Self { 
+            cipher, 
+            salt: Some(salt),
+        })
+    }
+    
+    fn get_or_create_salt() -> Result<String> {
+        let salt_path = Self::salt_path()?;
+        
+        if salt_path.exists() {
+            fs::read_to_string(&salt_path)
+                .map_err(|e| anyhow::anyhow!("Failed to read salt file: {}", e))
+        } else {
+            // Generate new random salt
+            let salt = SaltString::generate(&mut rand::thread_rng());
+            let salt_str = salt.to_string();
+            
+            // Create directory if needed
+            if let Some(parent) = salt_path.parent() {
+                fs::create_dir_all(parent)?;
+            }
+            
+            // Save salt with restricted permissions
+            fs::write(&salt_path, &salt_str)?;
+            
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt;
+                let mut perms = fs::metadata(&salt_path)?.permissions();
+                perms.set_mode(0o600); // Read/write for owner only
+                fs::set_permissions(&salt_path, perms)?;
+            }
+            
+            Ok(salt_str)
+        }
+    }
+    
+    fn salt_path() -> Result<PathBuf> {
+        // Try to use project-local .whiteout directory first
+        let local_path = PathBuf::from(".whiteout/.salt");
+        if local_path.parent().map_or(false, |p| p.exists()) {
+            return Ok(local_path);
+        }
+        
+        // Fallback to user config directory
+        directories::ProjectDirs::from("dev", "whiteout", "whiteout")
+            .ok_or_else(|| anyhow::anyhow!("Could not determine config directory"))
+            .map(|dirs| dirs.config_dir().join(".salt"))
     }
 
     pub fn encrypt(&self, plaintext: &str) -> Result<String> {
@@ -56,25 +108,21 @@ impl Crypto {
             .decrypt(nonce, ciphertext)
             .map_err(|e| anyhow::anyhow!("Decryption failed: {}", e))?;
         
-        String::from_utf8(plaintext).map_err(|e| anyhow::anyhow!("Invalid UTF-8 in decrypted data: {}", e))
+        String::from_utf8(plaintext)
+            .map_err(|e| anyhow::anyhow!("Invalid UTF-8 in decrypted data: {}", e))
     }
 
-    fn derive_key(passphrase: &str) -> Key<Aes256Gcm> {
-        // Use a fixed salt for deterministic key derivation
-        // In production, consider storing a random salt per installation
-        const SALT_STR: &str = "whiteout$alt$v1$deterministic";
-        
+    fn derive_key(passphrase: &str, salt_str: &str) -> Result<Key<Aes256Gcm>> {
         let argon2 = Argon2::default();
-        let salt = Salt::from_b64(SALT_STR).unwrap_or_else(|_| {
-            Salt::from_b64("d2hpdGVvdXQkYWx0JHYxJGRldGVybWlu").unwrap()
-        });
+        let salt = SaltString::from_b64(salt_str)
+            .map_err(|e| anyhow::anyhow!("Invalid salt format: {}", e))?;
         
         let mut output = [0u8; 32];
         argon2
             .hash_password_into(passphrase.as_bytes(), salt.as_bytes(), &mut output)
-            .expect("Failed to derive key");
+            .map_err(|e| anyhow::anyhow!("Failed to derive key: {}", e))?;
         
-        *Key::<Aes256Gcm>::from_slice(&output)
+        Ok(*Key::<Aes256Gcm>::from_slice(&output))
     }
 }
 
@@ -104,7 +152,23 @@ mod tests {
         let plaintext = "secret data";
         let encrypted = crypto1.encrypt(plaintext)?;
         
+        // Different passphrases with same salt should produce different keys
         assert!(crypto2.decrypt(&encrypted).is_err());
+        
+        Ok(())
+    }
+    
+    #[test]
+    fn test_salt_persistence() -> Result<()> {
+        // First instance creates salt
+        let crypto1 = Crypto::new("test-pass")?;
+        let salt1 = crypto1.salt.clone();
+        
+        // Second instance should reuse same salt
+        let crypto2 = Crypto::new("test-pass")?;
+        let salt2 = crypto2.salt.clone();
+        
+        assert_eq!(salt1, salt2);
         
         Ok(())
     }

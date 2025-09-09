@@ -1,7 +1,9 @@
 pub mod crypto;
 pub mod local;
+pub mod batched;
 
 pub use local::LocalStorage;
+pub use batched::BatchedStorage;
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

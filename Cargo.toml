@@ -35,7 +35,7 @@ directories = "5.0"
 sha2 = "0.10"
 argon2 = "0.5"
 rand = "0.8"
-aes-gcm = { version = "0.10", features = ["aes", "std"] }
+aes-gcm = { version = "0.10.3", features = ["aes", "std"] }
 base64 = "0.22"
 colored = "2.1"
 walkdir = "2.5"
@@ -43,6 +43,8 @@ git2 = "0.18"
 chrono = { version = "0.4", features = ["serde"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+rayon = "1.10"
+aho-corasick = "1.1"
 
 [dev-dependencies]
 tempfile = "3.10"
@@ -56,6 +58,10 @@ path = "src/main.rs"
 
 [[bench]]
 name = "parser_benchmark"
+harness = false
+
+[[bench]]
+name = "optimization_comparison"
 harness = false
 
 [lib]

@@ -172,7 +172,7 @@ fn run_command(cli: Cli) -> Result<()> {
                 }
                 gitattributes_content.push_str("* filter=whiteout\n");
                 std::fs::write(&gitattributes_path, gitattributes_content)
-                    .context("Failed to write .gitattributes file")?
+                    .context("Failed to write .gitattributes file")?;
                 println!("  {} Added filter to .gitattributes", "✓".bright_green());
             }
             

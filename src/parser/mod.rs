@@ -2,6 +2,8 @@ pub mod block;
 pub mod inline;
 pub mod partial;
 pub mod simple;
+pub mod optimized;
+pub mod parallel;
 
 use anyhow::Result;
 
