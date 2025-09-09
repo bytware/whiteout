@@ -6,14 +6,19 @@ echo "Installing Whiteout - Local-Only Code Decoration Tool"
 echo "====================================================="
 echo
 
-if ! command -v cargo &> /dev/null; then
+# Check for cargo in common locations
+if command -v cargo &> /dev/null; then
+    CARGO="cargo"
+elif [ -x "$HOME/.cargo/bin/cargo" ]; then
+    CARGO="$HOME/.cargo/bin/cargo"
+else
     echo "Error: Rust/Cargo is not installed."
     echo "Please install Rust from https://rustup.rs/"
     exit 1
 fi
 
 echo "Building Whiteout..."
-cargo build --release
+$CARGO build --release
 
 echo
 echo "Installing binary..."

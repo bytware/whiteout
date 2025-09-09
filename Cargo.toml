@@ -2,12 +2,25 @@
 name = "whiteout"
 version = "0.1.0"
 edition = "2021"
-authors = ["Terragon Labs"]
-description = "Local-only code decoration tool for Git"
+authors = ["Whiteout Contributors <contributors@whiteout.dev>"]
+description = "Keep secrets out of Git while maintaining them locally"
+documentation = "https://docs.whiteout.dev"
+homepage = "https://whiteout.dev"
+repository = "https://github.com/whiteout-dev/whiteout"
 license = "MIT"
-repository = "https://github.com/terragon-labs/whiteout"
-keywords = ["git", "security", "development", "tools", "secrets"]
+readme = "README.md"
+keywords = ["git", "secrets", "security", "filter", "development"]
 categories = ["development-tools", "command-line-utilities"]
+exclude = [
+    ".github/*",
+    "tests/*",
+    ".gitignore",
+    ".whiteout/*",
+    "*.sh",
+]
+
+[package.metadata.docs.rs]
+all-features = true
 
 [dependencies]
 clap = { version = "4.5", features = ["derive", "env"] }

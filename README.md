@@ -1,147 +1,339 @@
-# Whiteout - Local-Only Code Decoration Tool
+<div align="center">
 
-Whiteout is a Git filter tool that allows you to keep local-only code (like API keys, debug settings, or development URLs) in your working directory while ensuring they never get committed to your repository.
+# 🔒 Whiteout
 
-## Features
+**Keep Your Secrets Secret**
 
-- 🔒 **Secure**: Prevents secrets from being committed to Git
-- 🎯 **Flexible**: Multiple decoration styles (inline, block, partial)
-- 🚀 **Fast**: Efficient Rust implementation
-- 🔧 **Easy Integration**: Works seamlessly with Git filters
+[![Rust](https://img.shields.io/badge/rust-%23000000.svg?style=for-the-badge&logo=rust&logoColor=white)](https://rust-lang.org)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=for-the-badge)](http://makeapullrequest.com)
 
-## Installation
+A Git filter tool that keeps sensitive code local while committing safe alternatives to your repository.
 
-```bash
-# Clone and build
-git clone https://github.com/terragon-labs/whiteout
-cd whiteout
-cargo build --release
+[Features](#-features) • [Installation](#-installation) • [Quick Start](#-quick-start) • [Usage](#-usage) • [How It Works](#-how-it-works) • [Contributing](#-contributing)
 
-# Install to system
-sudo cp target/release/whiteout /usr/local/bin/
+</div>
+
+---
+
+## 🎯 Problem
+
+Ever accidentally committed an API key? Hardcoded a password for testing? Left debug code in production?
+
+**Whiteout** solves this by letting you maintain local-only code that never reaches your Git repository, while preserving safe alternatives in commits.
+
+```javascript
+// What you see locally:
+const apiKey = "sk-proj-SUPER-SECRET-KEY-123"; // @whiteout: "process.env.API_KEY"
+
+// What gets committed:
+"process.env.API_KEY"
 ```
 
-## Quick Start
+## ✨ Features
 
-1. Initialize Whiteout in your project:
+- 🔐 **Secure by Design** - Secrets never touch Git history
+- 🎨 **Flexible Decorations** - Multiple ways to mark sensitive code
+- ⚡ **Fast** - Written in Rust for optimal performance
+- 🔄 **Seamless Integration** - Works transparently with Git workflows
+- 🌍 **Language Agnostic** - Works with any text file or programming language
+- 💬 **Multi-Comment Support** - Works with `//`, `#`, `--` comment styles
+- 🛡️ **Safe Defaults** - Requires explicit marking to prevent accidents
+
+## 📦 Installation
+
+### Prerequisites
+
+- Git (version 2.0 or higher)
+- Rust toolchain (for building from source)
+
+### Install from Source
+
 ```bash
+# Clone the repository
+git clone https://github.com/yourusername/whiteout.git
+cd whiteout
+
+# Build and install
+cargo build --release
+sudo cp target/release/whiteout /usr/local/bin/
+
+# Verify installation
+whiteout --version
+```
+
+### Install with Cargo
+
+```bash
+cargo install whiteout
+```
+
+## 🚀 Quick Start
+
+### 1. Initialize in Your Project
+
+```bash
+cd your-project
 whiteout init
 ```
 
-2. Configure Git filters:
-```bash
-git config filter.whiteout.clean 'whiteout clean'
-git config filter.whiteout.smudge 'whiteout smudge'
-git config filter.whiteout.required true
-```
+This automatically:
+- Creates `.whiteout/` directory for local storage
+- Configures Git filters in your repository
+- Adds necessary `.gitattributes` entries
 
-3. Add to `.gitattributes`:
-```
-* filter=whiteout
-```
+### 2. Mark Your Sensitive Code
 
-## Decoration Syntax
+Choose from multiple decoration styles that work with any comment format:
 
-### Inline Decoration
-Keep a local value while committing a safe alternative:
+#### Inline Decoration
+Works with any comment style (`//`, `#`, `--`):
+
 ```javascript
-let apiKey = "sk-my-secret-key"; // @whiteout: process.env.API_KEY
+// JavaScript
+const apiKey = "sk-12345"; // @whiteout: "process.env.API_KEY"
 ```
 
-### Block Decoration
-Maintain entire blocks of local-only code:
-```rust
-// @whiteout-start
-const DEBUG: bool = true;
-const LOG_LEVEL: &str = "trace";
-// @whiteout-end
-const DEBUG: bool = false;
-const LOG_LEVEL: &str = "error";
-```
-
-### Partial Decoration
-Replace parts of strings:
 ```python
-url = "https://[[localhost:8080||api.production.com]]/v1"
+# Python
+api_key = "sk-12345"  # @whiteout: "os.environ['API_KEY']"
 ```
 
-## How It Works
-
-Whiteout uses Git's clean/smudge filter system:
-
-1. **Working Directory** (your local code with secrets)
-   - Contains decorated code with local values
-   
-2. **Clean Filter** (when staging/committing)
-   - Stores local values securely in `.whiteout/local.toml`
-   - Replaces local values with safe committed values
-   - Preserves decoration markers
-   
-3. **Repository** (what gets committed)
-   - Contains only safe, committed values
-   - No secrets or local configurations
-   
-4. **Smudge Filter** (when checking out)
-   - Restores local values from storage
-   - Maintains your local development environment
-
-## Commands
-
-- `whiteout init` - Initialize in current project
-- `whiteout clean` - Apply clean filter (used by Git)
-- `whiteout smudge` - Apply smudge filter (used by Git)
-- `whiteout mark <file>` - Mark code as local-only
-- `whiteout unmark <file>` - Remove decorations
-- `whiteout status` - Show decorated files
-- `whiteout config` - Manage settings
-
-## Example Workflow
-
-```bash
-# 1. Write code with local values
-echo 'let key = "sk-12345"; // @whiteout: env("KEY")' > config.js
-
-# 2. Stage the file (Git runs clean filter automatically)
-git add config.js
-
-# 3. Commit (only safe value is stored)
-git commit -m "Add config"
-
-# 4. The committed file contains: 
-# let key = env("KEY"); // @whiteout: env("KEY")
-
-# 5. In your working directory, you still see:
-# let key = "sk-12345"; // @whiteout: env("KEY")
+```sql
+-- SQL
+SELECT * FROM users WHERE key = 'sk-12345'; -- @whiteout: 'REDACTED'
 ```
 
-## Security
+#### Block Decoration
+Hide entire code blocks between markers:
 
-- Local values stored in `.whiteout/local.toml` (gitignored)
-- Optional encryption for sensitive data
-- Values are branch-specific
-- Never commits actual secrets to Git history
+```javascript
+// @whiteout-start
+const DEBUG = true;
+const SECRET_ENDPOINT = "http://localhost:3000";
+console.log("Debug mode active");
+// @whiteout-end
+const DEBUG = false;  // This line stays in commits
+```
 
-## Development
+#### Simple Decoration
+For markdown or documentation, hide content after a marker:
+
+```markdown
+# Public Documentation
+
+This content is committed.
+
+\@whiteout
+This content stays local only.
+It won't appear in commits.
+
+Back to public content.
+```
+
+#### Partial Replacement
+For configuration values within strings:
+
+```javascript
+const url = "https://[[localhost:3000||api.example.com]]/v1";
+// Locally: uses localhost:3000
+// Committed: uses api.example.com
+```
+
+### 3. Work Normally
 
 ```bash
-# Run tests
+# Edit your files with secrets
+vim config.js
+
+# Commit as usual - secrets are automatically removed
+git add .
+git commit -m "Add configuration"
+
+# Your local files keep the secrets
+cat config.js  # Still shows your secret values
+```
+
+## 🎭 Decoration Patterns
+
+### Inline Pattern
+**Syntax:** `<code> // @whiteout: <replacement>`
+
+**Note:** When documenting examples, escape the @ with backslash: `\@whiteout`
+
+```python
+# Local version:
+password = "admin123"  # @whiteout: "getpass.getpass()"
+
+# Committed version:
+"getpass.getpass()"
+```
+
+### Block Pattern
+**Syntax:** `@whiteout-start` ... `@whiteout-end`
+
+```yaml
+# @whiteout-start
+debug_mode: true
+verbose_logging: true
+test_endpoints:
+  - localhost:8080
+# @whiteout-end
+production_mode: true  # This stays in commits
+```
+
+### Simple Pattern
+**Syntax:** `@whiteout` (hides everything until blank line)
+
+```text
+Normal content here.
+
+\@whiteout
+Secret information.
+More secrets.
+
+Public content resumes.
+```
+
+### Partial Pattern
+**Syntax:** `[[local||committed]]`
+
+```toml
+[database]
+host = "[[localhost||db.production.com]]"
+port = [[5432||3306]]
+```
+
+## 📝 Documentation Escape Sequences
+
+When writing documentation about Whiteout (like this README), use backslash to escape decorators:
+
+```markdown
+# To show the literal text in docs:
+\@whiteout           # Shows as @whiteout
+\@whiteout-start     # Shows as @whiteout-start
+\@whiteout-end       # Shows as @whiteout-end
+
+# These are treated as actual decorators:
+@whiteout           # Would hide content (without backslash)
+```
+
+## 🔧 Commands
+
+### Initialize Project
+```bash
+whiteout init [--path <dir>]
+```
+
+### Preview Changes
+See what will be committed vs. what stays local:
+```bash
+whiteout preview <file> [--diff]
+```
+
+### Check for Exposed Secrets
+Scan for potential secrets without decorations:
+```bash
+whiteout check [files...] [--fix]
+```
+
+### Show Status
+View all decorated files:
+```bash
+whiteout status [--verbose]
+```
+
+### Manual Operations
+```bash
+# Apply clean filter (remove secrets)
+whiteout clean < file.txt
+
+# Apply smudge filter (restore secrets)
+whiteout smudge < file.txt
+```
+
+## 🔄 How It Works
+
+Whiteout uses Git's clean/smudge filter mechanism:
+
+1. **Clean Filter** (Working → Repository): Removes decorated local values before commit
+2. **Smudge Filter** (Repository → Working): Restores local values after checkout
+
+```mermaid
+graph LR
+    A[Working Directory<br/>with secrets] -->|git add<br/>clean filter| B[Staging Area<br/>secrets removed]
+    B -->|git commit| C[Repository<br/>safe version]
+    C -->|git checkout<br/>smudge filter| A
+```
+
+Local values are stored in `.whiteout/local.toml` (gitignored) and restored automatically.
+
+## 🔒 Security Considerations
+
+- **Never commit** `.whiteout/` directory
+- **Backup** your local values separately
+- **Use environment variables** for production secrets
+- **Review commits** before pushing to ensure secrets are removed
+- **Test filters** work correctly before committing sensitive data
+
+## 🧪 Testing
+
+```bash
+# Run all tests
 cargo test
 
-# Run example
-cargo run --example demo
+# Run specific test
+cargo test test_inline_parser
 
-# Build documentation
-cargo doc --open
+# Run with output
+cargo test -- --nocapture
+
+# Run integration tests
+./tests/git_integration_test.sh
 ```
 
-## License
+## 🤝 Contributing
 
-MIT License - See LICENSE file for details
+We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
-## Contributing
+### Development Setup
 
-Contributions are welcome! Please read CONTRIBUTING.md for guidelines.
+```bash
+# Fork and clone the repository
+git clone https://github.com/yourusername/whiteout.git
+cd whiteout
 
-## Support
+# Install development dependencies
+cargo install cargo-watch
 
-For issues and questions, please use the GitHub issue tracker.
+# Run tests in watch mode
+cargo watch -x test
+
+# Format code
+cargo fmt
+
+# Check for issues
+cargo clippy
+```
+
+## 📄 License
+
+MIT License - see [LICENSE](LICENSE) for details.
+
+## 🙏 Acknowledgments
+
+- Inspired by git-crypt and similar tools
+- Built with Rust and the amazing Rust ecosystem
+- Thanks to all contributors and users
+
+## 📚 Resources
+
+- [Git Attributes Documentation](https://git-scm.com/docs/gitattributes)
+- [Git Filters Explained](https://git-scm.com/book/en/v2/Customizing-Git-Git-Attributes#_keyword_expansion)
+- [Rust Book](https://doc.rust-lang.org/book/)
+
+---
+
+<div align="center">
+Made with ❤️ by the Whiteout Team
+</div>

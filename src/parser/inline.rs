@@ -9,8 +9,9 @@ pub struct InlineParser {
 
 impl InlineParser {
     pub fn new() -> Self {
+        // Match @whiteout: with any comment style (// or # or --)
         let pattern = Regex::new(
-            r"(?m)^(.+?)\s*//\s*@whiteout:\s*(.+?)$"
+            r"(?m)^(.+?)\s*(?://|#|--)\s*@whiteout:\s*(.+?)$"
         ).unwrap();
         
         Self { pattern }
@@ -20,6 +21,10 @@ impl InlineParser {
         let mut decorations = Vec::new();
         
         for (line_num, line) in content.lines().enumerate() {
+            // Skip escaped decorations
+            if line.contains(r"\@whiteout:") {
+                continue;
+            }
             if let Some(captures) = self.pattern.captures(line) {
                 let local_value = captures.get(1).unwrap().as_str().to_string();
                 let committed_value = captures.get(2).unwrap().as_str().to_string();

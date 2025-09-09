@@ -19,11 +19,11 @@ const DEBUG: bool = false;
 const LOG_LEVEL: &str = "error";
 const DB_URL: &str = std::env::var("DATABASE_URL").unwrap();
 
-// Example 3: Partial decoration
-let api_url = "https://[[dev.local:8080||api.production.com]]/v1/endpoint";
+// Example 3: Partial decoration (requires @whiteout-partial)
+let api_url = "https://[[dev.local:8080||api.production.com]]/v1/endpoint"; // @whiteout-partial
 let config = Config {
-    host: "[[localhost||example.com]]",
-    port: [[8080||443]],
+    host: "[[localhost||example.com]]", // @whiteout-partial
+    port: [[8080||443]], // @whiteout-partial
 };
 "#;
 

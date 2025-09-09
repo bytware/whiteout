@@ -114,7 +114,7 @@ fn test_partial_decoration() {
     let temp_dir = TempDir::new().unwrap();
     let whiteout = Whiteout::init(temp_dir.path()).unwrap();
     
-    let original = r#"let url = "https://[[admin:password123@localhost||example.com]]/api";"#;
+    let original = r#"let url = "https://[[admin:password123@localhost||example.com]]/api"; // @whiteout-partial"#;
     let file_path = Path::new("url.js");
     
     let cleaned = whiteout.clean(original, file_path).unwrap();

@@ -10,8 +10,9 @@ pub struct BlockParser {
 
 impl BlockParser {
     pub fn new() -> Self {
-        let start_pattern = Regex::new(r"(?m)^\s*//\s*@whiteout-start\s*$").unwrap();
-        let end_pattern = Regex::new(r"(?m)^\s*//\s*@whiteout-end\s*$").unwrap();
+        // Match @whiteout-start/end with any comment style or no comment at all
+        let start_pattern = Regex::new(r"(?m)^.*@whiteout-start\s*$").unwrap();
+        let end_pattern = Regex::new(r"(?m)^.*@whiteout-end\s*$").unwrap();
         
         Self {
             start_pattern,
@@ -25,7 +26,8 @@ impl BlockParser {
         let mut i = 0;
         
         while i < lines.len() {
-            if self.start_pattern.is_match(lines[i]) {
+            // Check if line matches pattern and is not escaped
+            if self.start_pattern.is_match(lines[i]) && !lines[i].contains(r"\@whiteout-start") {
                 let start_line = i + 1;
                 let mut local_lines = Vec::new();
                 let mut committed_lines = Vec::new();
@@ -60,14 +62,13 @@ impl BlockParser {
                         }
                     }
                     
-                    if !local_lines.is_empty() {
-                        decorations.push(Decoration::Block {
-                            start_line,
-                            end_line: start_line + local_lines.len() + committed_lines.len() + 1,
-                            local_content: local_lines.join("\n"),
-                            committed_content: committed_lines.join("\n"),
-                        });
-                    }
+                    // Push decoration even if local_lines is empty (for cleaned content)
+                    decorations.push(Decoration::Block {
+                        start_line,
+                        end_line: start_line + local_lines.len() + 1, // end_line is the line with @whiteout-end
+                        local_content: local_lines.join("\n"),
+                        committed_content: committed_lines.join("\n"),
+                    });
                 }
             } else {
                 i += 1;

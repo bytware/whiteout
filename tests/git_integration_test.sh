@@ -31,7 +31,7 @@ cat > config.js << 'EOF'
 const API_KEY = "sk-proj-ACTUAL-SECRET-KEY-123456789"; // @whiteout: process.env.API_KEY
 const DB_PASSWORD = "super-secret-password"; // @whiteout: "REDACTED"
 const DEBUG = true; // @whiteout: false
-const URL = "https://[[admin:pass@localhost:3000||api.example.com]]/v1";
+const URL = "https://[[admin:pass@localhost:3000||api.example.com]]/v1"; // @whiteout-partial
 EOF
 
 echo "Original file content:"

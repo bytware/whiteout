@@ -40,11 +40,21 @@ pub fn apply(
             }
             Decoration::Partial { line, replacements } => {
                 for (idx, replacement) in replacements.iter_mut().enumerate() {
-                    if let Ok(stored_value) = storage.get_value(
-                        file_path,
-                        &format!("partial_{}_{}", line, idx),
-                    ) {
-                        replacement.local_value = stored_value;
+                    // Try both the current line number and nearby lines
+                    // This handles cases where line numbers shift due to block decorations
+                    let mut found = false;
+                    for line_offset in 0..=5 {
+                        for try_line in [*line + line_offset, line.saturating_sub(line_offset)] {
+                            if let Ok(stored_value) = storage.get_value(
+                                file_path,
+                                &format!("partial_{}_{}", try_line, idx),
+                            ) {
+                                replacement.local_value = stored_value;
+                                found = true;
+                                break;
+                            }
+                        }
+                        if found { break; }
                     }
                 }
             }

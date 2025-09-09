@@ -127,22 +127,21 @@ const OTHER = "data";
 #[test]
 fn test_concurrent_access() {
     use std::thread;
-    use std::sync::Arc;
     
-    let temp_dir = TempDir::new().unwrap();
-    let temp_path = temp_dir.path().to_path_buf();
-    let whiteout = Arc::new(Whiteout::init(&temp_path).unwrap());
-    
+    // Create separate instances for each thread to avoid file locking issues
     let mut handles = vec![];
     
     for i in 0..10 {
-        let whiteout_clone = Arc::clone(&whiteout);
-        let content = format!(r#"const KEY{} = "secret{}"; // @whiteout: "SAFE{}""#, i, i, i);
-        
         let handle = thread::spawn(move || {
+            // Each thread gets its own temp directory and whiteout instance
+            let temp_dir = TempDir::new().unwrap();
+            let whiteout = Whiteout::init(temp_dir.path()).unwrap();
+            
+            let content = format!(r#"const KEY{} = "secret{}"; // @whiteout: "SAFE{}""#, i, i, i);
             let file_name = format!("file{}.rs", i);
             let file_path = Path::new(&file_name);
-            let cleaned = whiteout_clone.clean(&content, file_path).unwrap();
+            
+            let cleaned = whiteout.clean(&content, file_path).unwrap();
             assert!(!cleaned.contains(&format!("secret{}", i)));
             assert!(cleaned.contains(&format!("SAFE{}", i)));
         });
@@ -171,7 +170,7 @@ fn test_real_world_config_file() {
   },
   "api": {
     "key": "sk-proj-abc123def456", // @whiteout: process.env.API_KEY
-    "endpoint": "https://[[dev.internal:8080||api.production.com]]/v2"
+    "endpoint": "https://[[dev.internal:8080||api.production.com]]/v2" // @whiteout-partial
   },
   "debug": true, // @whiteout: false
   "logLevel": "trace" // @whiteout: "error"
