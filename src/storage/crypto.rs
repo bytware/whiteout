@@ -4,11 +4,10 @@ use aes_gcm::{
 };
 use anyhow::Result;
 use argon2::{
-    password_hash::{PasswordHasher, SaltString},
+    password_hash::SaltString,
     Argon2,
 };
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
-use rand::RngCore;
 use std::fs;
 use std::path::PathBuf;
 
@@ -119,7 +118,7 @@ impl Crypto {
         
         let mut output = [0u8; 32];
         argon2
-            .hash_password_into(passphrase.as_bytes(), salt.as_bytes(), &mut output)
+            .hash_password_into(passphrase.as_bytes(), salt.as_str().as_bytes(), &mut output)
             .map_err(|e| anyhow::anyhow!("Failed to derive key: {}", e))?;
         
         Ok(*Key::<Aes256Gcm>::from_slice(&output))

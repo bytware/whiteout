@@ -224,8 +224,10 @@ mod tests {
         
         // Write multiple values without triggering flush
         for i in 0..10 {
-            let file_path = Path::new(&format!("test{}.rs", i));
-            storage.store_value(file_path, "key", &format!("value{}", i))?;
+            let file_name = format!("test{}.rs", i);
+            let file_path = Path::new(&file_name);
+            let value = format!("value{}", i);
+            storage.store_value(file_path, "key", &value)?;
         }
         
         // Values should be readable from pending writes
@@ -248,8 +250,10 @@ mod tests {
         
         // Write enough values to trigger auto-flush
         for i in 0..BatchedStorage::BATCH_SIZE + 1 {
-            let file_path = Path::new(&format!("test{}.rs", i));
-            storage.store_value(file_path, "key", &format!("value{}", i))?;
+            let file_name = format!("test{}.rs", i);
+            let file_path = Path::new(&file_name);
+            let value = format!("value{}", i);
+            storage.store_value(file_path, "key", &value)?;
         }
         
         // Check that file was written

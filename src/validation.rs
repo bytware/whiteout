@@ -304,20 +304,24 @@ mod tests {
     
     #[test]
     fn test_path_validation() {
-        let base = Path::new("/home/user/project");
+        use tempfile::TempDir;
+        
+        let temp_dir = TempDir::new().unwrap();
+        let base = temp_dir.path();
+        
+        // Create a subdirectory for testing
+        let subdir = base.join("src");
+        std::fs::create_dir(&subdir).unwrap();
         
         // Valid path
-        let result = InputValidator::validate_path(
-            Path::new("/home/user/project/src/main.rs"),
-            base
-        );
+        let valid_file = subdir.join("main.rs");
+        std::fs::write(&valid_file, "test").unwrap();
+        let result = InputValidator::validate_path(&valid_file, base);
         assert!(result.is_ok());
         
         // Path traversal attempt
-        let result = InputValidator::validate_path(
-            Path::new("/home/user/project/../../../etc/passwd"),
-            base
-        );
+        let invalid_path = base.join("../outside.txt");
+        let result = InputValidator::validate_path(&invalid_path, base);
         assert!(result.is_err());
     }
     

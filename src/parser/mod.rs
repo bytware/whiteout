@@ -2,7 +2,6 @@ pub mod block;
 pub mod inline;
 pub mod inline_optimized;
 pub mod memory_optimized;
-pub mod mod_optimized;
 pub mod optimized;
 pub mod parallel;
 pub mod partial;

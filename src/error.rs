@@ -182,6 +182,7 @@ impl<T> ErrorContext<T> for Result<T, io::Error> {
 /// Error display helper for CLI
 pub fn display_error(error: &WhiteoutError) {
     use colored::Colorize;
+    use std::error::Error;
     
     eprintln!("\n{} {}", "✗".bright_red().bold(), "Operation failed".bright_red().bold());
     eprintln!("  {} {}", "├".bright_black(), error);
