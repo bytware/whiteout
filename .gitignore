@@ -2,4 +2,4 @@
 **/*.rs.bk
 *.pdb
 .whiteout/local.toml
-Cargo.locktest/
+test/
