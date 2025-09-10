@@ -22,8 +22,8 @@ const LOG = "error";"#;
     println!("\nCleaned:\n{}", cleaned);
     
     // Check decorations are PRESERVED (for smudge to work)
-    assert!(cleaned.contains("@whiteout-start"), "Decoration @whiteout-start should be preserved");
-    assert!(cleaned.contains("@whiteout-end"), "Decoration @whiteout-end should be preserved");
+    assert!(cleaned.contains("@whiteout-start"), "Decoration @whiteout-start not preserved");
+    assert!(cleaned.contains("@whiteout-end"), "Decoration @whiteout-end not preserved");
     
     // Check only safe values are present
     assert!(cleaned.contains("const DEBUG = false"), "Missing safe DEBUG value");
@@ -38,20 +38,9 @@ const LOG = "error";"#;
         println!("\nStorage content:\n{}", storage_content);
     }
     
-    // Note: After our fix, smudge can't restore from cleaned content because
-    // decorations are completely removed. This is the correct behavior.
-    // Smudge only works when decorations are present (e.g., after checkout from repo).
-    
-    // To test smudge properly, we need content WITH decorations but committed values
-    let content_from_repo = r#"// @whiteout-start
-const DEBUG = false;
-const LOG = "error";
-// @whiteout-end
-const DEBUG = false;
-const LOG = "error";"#;
-    
-    println!("\nCalling smudge on content with decorations...");
-    let smudged = whiteout.smudge(content_from_repo, file_path)?;
+    // With preserved decorations, smudge can restore from cleaned content
+    println!("\nCalling smudge on cleaned content...");
+    let smudged = whiteout.smudge(&cleaned, file_path)?;
     println!("\nSmudged:\n{}", smudged);
     
     // Check secrets are restored when decorations are present

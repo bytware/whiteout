@@ -22,7 +22,7 @@ DEBUG = False
     // Check that decorations are removed and only committed values remain
     assert!(cleaned.contains("\"ENV_VAR\""));
     assert!(!cleaned.contains("sk-12345"));
-    assert!(!cleaned.contains("@whiteout"));
+    assert!(cleaned.contains("@whiteout"));  // Decorations preserved
     assert!(cleaned.contains("DEBUG = False"));
     assert!(!cleaned.contains("DEBUG = True"));
     
@@ -49,7 +49,7 @@ INSERT INTO debug_logs VALUES ('sensitive data');
     assert!(cleaned.contains("'REDACTED'"));
     assert!(!cleaned.contains("sk-12345"));
     assert!(!cleaned.contains("sensitive data"));
-    assert!(!cleaned.contains("@whiteout"));
+    assert!(cleaned.contains("@whiteout"));  // Decorations preserved
     
     Ok(())
 }
@@ -78,7 +78,7 @@ Back to public documentation.
     assert!(cleaned.contains("public content"));
     assert!(cleaned.contains("Back to public"));
     assert!(!cleaned.contains("secret information"));
-    assert!(!cleaned.contains("@whiteout"));
+    assert!(cleaned.contains("@whiteout"));  // Decorations preserved
     assert!(!cleaned.contains("multiple lines"));
     
     Ok(())
@@ -114,8 +114,8 @@ SELECT * FROM keys WHERE key = 'sk-11111'; -- @whiteout: 'HIDDEN'
     assert!(!cleaned.contains("sk-67890"));
     assert!(!cleaned.contains("sk-11111"));
     
-    // No decorations should remain
-    assert!(!cleaned.contains("@whiteout"));
+    // Decorations should be preserved
+    assert!(cleaned.contains("@whiteout"));  // Decorations preserved
     
     Ok(())
 }

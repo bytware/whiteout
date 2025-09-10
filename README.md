@@ -27,7 +27,7 @@ Ever accidentally committed an API key? Hardcoded a password for testing? Left d
 const apiKey = "sk-proj-SUPER-SECRET-KEY-123"; // @whiteout: "process.env.API_KEY"
 
 // What gets committed:
-"process.env.API_KEY" // @whiteout: "process.env.API_KEY"
+"process.env.API_KEY"
 ```
 
 ## ✨ Features
@@ -161,7 +161,7 @@ cat config.js  # Still shows your secret values
 password = "admin123"  # @whiteout: "getpass.getpass()"
 
 # Committed version:
-"getpass.getpass()"  # @whiteout: "getpass.getpass()"
+"getpass.getpass()"
 ```
 
 ### Block Pattern

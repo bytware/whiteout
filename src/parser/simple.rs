@@ -32,12 +32,13 @@ impl SimpleParser {
         
         while i < lines.len() {
             // Check if line matches pattern and is not escaped
-            // Also skip @whiteout-start, @whiteout-end, and @whiteout: patterns
+            // Also skip @whiteout-start, @whiteout-end, @whiteout:, and @whiteout-partial patterns
             if PATTERN.is_match(lines[i]) 
                 && !lines[i].contains(r"\@whiteout")
                 && !lines[i].contains("@whiteout-start")
                 && !lines[i].contains("@whiteout-end")
-                && !lines[i].contains("@whiteout:") {
+                && !lines[i].contains("@whiteout:")
+                && !lines[i].contains("@whiteout-partial") {
                 let start_line = i + 1;
                 let mut local_lines = Vec::new();
                 
