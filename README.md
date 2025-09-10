@@ -24,10 +24,10 @@ Ever accidentally committed an API key? Hardcoded a password for testing? Left d
 
 ```javascript
 // What you see locally:
-const apiKey = "sk-proj-SUPER-SECRET-KEY-123"; // @whiteout: "process.env.API_KEY"
+const apiKey = "process.env.API_KEY"; // @whiteout: "sk-proj-SUPER-SECRET-KEY-123"
 
 // What gets committed:
-"process.env.API_KEY"
+const apiKey = "process.env.API_KEY";
 ```
 
 ## ✨ Features
@@ -158,10 +158,10 @@ cat config.js  # Still shows your secret values
 
 ```python
 # Local version:
-password = "admin123"  # @whiteout: "getpass.getpass()"
+password = "getpass.getpass()"  # @whiteout: "admin123"
 
 # Committed version:
-"getpass.getpass()"
+password = "getpass.getpass()"
 ```
 
 ### Block Pattern
