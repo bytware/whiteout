@@ -74,16 +74,6 @@ sudo cp target/release/whiteout /usr/local/bin/
 whiteout --version
 ```
 
-### Install on Arch Linux (AUR)
-
-```bash
-# Using yay
-yay -S whiteout-git
-
-# Using paru
-paru -S whiteout-git
-```
-
 
 ## 🚀 Quick Start
 
