@@ -45,13 +45,25 @@ const apiKey = "process.env.API_KEY";
 ### Prerequisites
 
 - Git (version 2.0 or higher)
-- Rust toolchain (for building from source)
+
+### Install via Homebrew (macOS/Linux)
+
+```bash
+brew tap bytware/tap
+brew install whiteout
+```
+
+### Install via Cargo (All platforms)
+
+```bash
+cargo install whiteout-cli
+```
 
 ### Install from Source
 
 ```bash
 # Clone the repository
-git clone https://github.com/whiteout-dev/whiteout.git
+git clone https://github.com/bytware/whiteout.git
 cd whiteout
 
 # Build and install
@@ -60,6 +72,16 @@ sudo cp target/release/whiteout /usr/local/bin/
 
 # Verify installation
 whiteout --version
+```
+
+### Install on Arch Linux (AUR)
+
+```bash
+# Using yay
+yay -S whiteout-git
+
+# Using paru
+paru -S whiteout-git
 ```
 
 

@@ -1,0 +1,31 @@
+# Maintainer: Your Name <your.email@example.com>
+pkgname=whiteout-git
+pkgver=1.0.0
+pkgrel=1
+pkgdesc="Git filter tool that prevents secrets from being committed"
+arch=('x86_64' 'aarch64')
+url="https://github.com/bytware/whiteout"
+license=('MIT')
+depends=('git')
+makedepends=('rust' 'cargo')
+provides=('whiteout')
+conflicts=('whiteout')
+source=("git+https://github.com/bytware/whiteout.git#tag=v${pkgver}")
+sha256sums=('SKIP')
+
+build() {
+    cd "$srcdir/whiteout"
+    cargo build --release --locked
+}
+
+check() {
+    cd "$srcdir/whiteout"
+    cargo test --release --locked
+}
+
+package() {
+    cd "$srcdir/whiteout"
+    install -Dm755 "target/release/whiteout" "$pkgdir/usr/bin/whiteout"
+    install -Dm644 "LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+    install -Dm644 "README.md" "$pkgdir/usr/share/doc/$pkgname/README.md"
+}

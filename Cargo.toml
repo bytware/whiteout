@@ -1,12 +1,12 @@
 [package]
-name = "whiteout"
-version = "0.1.0"
+name = "whiteout-cli"
+version = "1.0.0"
 edition = "2021"
-authors = ["Whiteout Contributors <contributors@whiteout.dev>"]
+authors = ["Bytware Contributors"]
 description = "Keep secrets out of Git while maintaining them locally"
-documentation = "https://docs.whiteout.dev"
-homepage = "https://whiteout.dev"
-repository = "https://github.com/whiteout-dev/whiteout"
+documentation = "https://github.com/bytware/whiteout"
+homepage = "https://github.com/bytware/whiteout"
+repository = "https://github.com/bytware/whiteout"
 license = "MIT"
 readme = "README.md"
 keywords = ["git", "secrets", "security", "filter", "development"]
